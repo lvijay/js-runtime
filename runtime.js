@@ -54,8 +54,17 @@ var context = {};
 // Define this because Rhino doesn't
 this.console = {log: function(x) {java.lang.System.out.println(x);}};
 
+this.setTimeout = context.setTimeout;
+
 // example code
-context.setTimeout(function() {console.log('fini.');}, 10000);
+context.setTimeout(function() {
+  setTimeout(function() {
+    console.log('started earlier, finished later');
+  }, 2000);
+  setTimeout(function() {
+    console.log('started later, finished earlier');
+  }, 1000);
+}, 100);
 
 // start the interpreter
 context.start();
