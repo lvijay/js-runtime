@@ -14,18 +14,24 @@ var context = {};
   var setTimeout = function(task, timeout) {
     var now = new Date().getTime();
     var end = now + timeout;
+    var cancelled = false;
 
     var self = function() {
       var now = new Date().getTime();
       if (now >= end) {
         queue.push(task);
       } else {
+        if (cancelled) return;
         java.lang.Thread.currentThread().yield();
         queue.push(self);
       }
     };
 
     queue.push(self);
+
+    return {
+      cancel: function() {cancelled = true;}
+    };
   };
 
   var executor = function(executor, queue) {
@@ -44,7 +50,6 @@ var context = {};
   };
 
   who.start = function() {
-    console.log('starting...');
     executor.call(who, executor, queue);
   };
 
@@ -58,9 +63,13 @@ this.setTimeout = context.setTimeout;
 
 // example code
 context.setTimeout(function() {
+  var timer = setTimeout(function() {
+    console.log('you will never see this');
+  }, 2000);
   setTimeout(function() {
     console.log('started earlier, finished later');
-  }, 2000);
+    timer.cancel();
+  }, 1500);
   setTimeout(function() {
     console.log('started later, finished earlier');
   }, 1000);
