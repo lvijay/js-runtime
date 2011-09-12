@@ -11,29 +11,6 @@ var context = {};
 (function(who) {
   var queue = [];
   
-  var setTimeout = function(task, timeout) {
-    var now = new Date().getTime();
-    var end = now + timeout;
-    var cancelled = false;
-
-    var self = function() {
-      var now = new Date().getTime();
-      if (now >= end) {
-        queue.push(task);
-      } else {
-        if (cancelled) return;
-        java.lang.Thread.currentThread().yield();
-        queue.push(self);
-      }
-    };
-
-    queue.push(self);
-
-    return {
-      cancel: function() {cancelled = true;}
-    };
-  };
-
   var executor = function(executor, queue) {
     while (true) {
       if (queue.length === 0) {
@@ -44,7 +21,7 @@ var context = {};
       var task = queue.shift();
 
       if (typeof task === 'function') {
-        try { task.call(who) } catch (e) {}
+        try { task.call(task); } catch (e) {}
       }
     }
   };
@@ -53,16 +30,45 @@ var context = {};
     executor.call(who, executor, queue);
   };
 
-  who.setTimeout = setTimeout;
+  who.addTask = function(task) {
+    queue.push(task);
+  };
 })(context);
 
-// Define this because Rhino doesn't
-this.console = {log: function(x) {java.lang.System.out.println(x);}};
+// Define a simple logging utility
+console = {
+  log: function(x) {
+    context.addTask(function() {
+      print(x);
+    });
+  }};
 
-this.setTimeout = context.setTimeout;
+// define a setTimeout utility
+function setTimeout(task, timeout) {
+  var now = new Date().getTime();
+  var end = now + timeout;
+  var cancelled = false;
+
+  var self = function() {
+    var now = new Date().getTime();
+    if (now >= end) {
+      context.addTask(task);
+    } else {
+      if (cancelled) return;
+      java.lang.Thread.currentThread().yield();
+      context.addTask(self);
+    }
+  };
+
+  context.addTask(self);
+
+  return {
+    cancel: function() {cancelled = true;}
+  };
+};
 
 // example code
-context.setTimeout(function() {
+setTimeout(function() {
   var timer = setTimeout(function() {
     console.log('you will never see this');
   }, 2000);
