@@ -9,16 +9,16 @@
 var runtime = {};
 
 (function(runtime) {
-  var queue = [];
+  var queue = new java.util.concurrent.LinkedBlockingQueue();
   
   var executor = function(executor, queue) {
     while (true) {
-      if (queue.length === 0) {
+      if (queue.isEmpty()) {
         // all tasks completed
         break;
       }
 
-      var task = queue.shift();
+      var task = queue.take();
 
       if (typeof task === 'function') {
         try { task.call(task); } catch (e) {}
@@ -31,7 +31,7 @@ var runtime = {};
   };
 
   runtime.addTask = function(task) {
-    queue.push(task);
+    queue.offer(task);
   };
 })(runtime);
 
